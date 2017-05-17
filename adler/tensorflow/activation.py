@@ -3,8 +3,8 @@ with demandimport.enabled():
     import tensorflow as tf
 
 
-def leaky_relu(_x):
-    alphas = tf.Variable(tf.constant(0.0, shape=[int(_x.get_shape()[-1])]),
+def leaky_relu(_x, alpha=0.2):
+    alphas = tf.Variable(tf.constant(alpha, shape=[int(_x.get_shape()[-1])]),
                          trainable=False)
 
     pos = tf.nn.relu(_x)
