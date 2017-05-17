@@ -1,6 +1,3 @@
-__all__ = ('activation', 'layers', 'unet', 'util')
+__all__ = ('phantom',)
 
-from . import activation
-from . import layers
-from . import unet
-from . import util
+from . import phantom

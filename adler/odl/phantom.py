@@ -2,7 +2,7 @@ import numpy as np
 
 import demandimport
 with demandimport.enabled():
-    import tensorflow as odl
+    import odl
 
 
 def random_ellipse():
