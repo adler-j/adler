@@ -12,9 +12,19 @@ def conv1d(x, W, stride=1, padding='SAME'):
 
 def conv2d(x, W, stride=(1, 1), padding='SAME'):
     with tf.name_scope('conv2d'):
-        return tf.nn.conv2d(x, W,
-                            strides=[1, stride[0], stride[1], 1],
-                            padding=padding)
+        strides = [1, stride[0], stride[1], 1]
+        if padding in ('SAME', 'VALID'):
+            return tf.nn.conv2d(x, W,
+                                strides=strides, padding=padding)
+        else:
+            paddings = [[0, 0],
+                        [1, 1],
+                        [1, 1],
+                        [0, 0]]
+            x = tf.pad(x, paddings=paddings, mode=padding)
+
+            return tf.nn.conv2d(x, W,
+                                strides=strides, padding='VALID')
 
 
 def conv2dtransp(x, W, stride=(1, 1), out_shape=None, padding='SAME'):
