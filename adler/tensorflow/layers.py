@@ -17,14 +17,15 @@ def conv2d(x, W, stride=(1, 1), padding='SAME'):
                             padding=padding)
 
 
-def conv2dtransp(x, W, stride=(1, 1), padding='SAME'):
+def conv2dtransp(x, W, stride=(1, 1), out_shape=None, padding='SAME'):
     with tf.name_scope('conv2dtransp'):
         x_shape = tf.shape(x)
         W_shape = tf.shape(W)
-        out_shape = tf.stack([x_shape[0],
-                              stride[0] * x_shape[1],
-                              stride[1] * x_shape[2],
-                              W_shape[2]])
+        if out_shape is None:
+            out_shape = tf.stack([x_shape[0],
+                                  stride[0] * x_shape[1],
+                                  stride[1] * x_shape[2],
+                                  W_shape[2]])
         return tf.nn.conv2d_transpose(x, W,
                                       output_shape=out_shape,
                                       strides=[1, stride[0], stride[1], 1],

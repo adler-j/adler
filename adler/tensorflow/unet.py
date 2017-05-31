@@ -20,6 +20,7 @@ class UNet(object):
         self.nout = nout
         self.depth = depth
         self.layers_per_depth = layers_per_depth
+        self.features = features
         self.feature_increase = feature_increase
         self.keep_prob = keep_prob
 
@@ -36,7 +37,7 @@ class UNet(object):
             self.w_down, self.b_down = [], []
             self.w_up, self.b_up = [], []
             for i in range(self.depth):
-                features_i = int(features * self.feature_increase ** i)
+                features_i = self.features_at(i)
                 self.w_down.append([])
                 self.b_down.append([])
                 self.w_up.append([])
@@ -44,7 +45,7 @@ class UNet(object):
                 for j in range(self.layers_per_depth):
                     with tf.name_scope('down_{}_{}'.format(i, j)):
                         if i > 0 and j == 0:
-                            w, b = self.get_weight_bias(features_i // self.feature_increase, features_i)
+                            w, b = self.get_weight_bias(self.features_at(i - 1), features_i)
                         else:
                             w, b = self.get_weight_bias(features_i, features_i)
 
@@ -53,7 +54,7 @@ class UNet(object):
 
                     with tf.name_scope('up_{}_{}'.format(i, j)):
                         if j == 0:
-                            w, b = self.get_weight_bias(features_i * self.feature_increase, features_i, transpose=True)
+                            w, b = self.get_weight_bias(self.features_at(i + 1), features_i, transpose=True)
                         elif j == 1:
                             w, b = self.get_weight_bias(features_i * 2, features_i)
                         else:
@@ -62,12 +63,12 @@ class UNet(object):
                         self.w_up[i].append(w)
                         self.b_up[i].append(b)
 
-            features_i = features * self.feature_increase ** (self.depth)
+            features_i = self.features_at(self.depth)
             self.w_coarse, self.b_coarse = [], []
             for j in range(self.layers_per_depth):
                 with tf.name_scope('coarse_{}'.format(j)):
                     if j == 0:
-                        w, b = self.get_weight_bias(features_i // self.feature_increase, features_i)
+                        w, b = self.get_weight_bias(self.features_at(self.depth - 1), features_i)
                     else:
                         w, b = self.get_weight_bias(features_i, features_i)
 
@@ -77,6 +78,8 @@ class UNet(object):
             with tf.name_scope('out_{}'.format(j)):
                 self.w_out, self.b_out = self.get_weight_bias(features, nout)
 
+    def features_at(self, level):
+        return int(self.features * self.feature_increase ** level)
 
     def get_weight_bias(self, nin, nout, transpose=False):
         # Xavier initialization
@@ -116,10 +119,10 @@ class UNet(object):
 
             return self.apply_activation(x)
 
-    def apply_convtransp(self, x, w, b, stride=(1, 1)):
+    def apply_convtransp(self, x, w, b, stride=(1, 1), out_shape=None):
         with tf.name_scope('apply_convtransp'):
 
-            x = conv2dtransp(x, w, stride=stride) + b
+            x = conv2dtransp(x, w, stride=stride, out_shape=out_shape) + b
 
             if self.use_batch_norm:
                 x = tf.contrib.layers.batch_norm(x, center=True, scale=True,
@@ -155,7 +158,14 @@ class UNet(object):
             # up layers
             for i in reversed(range(self.depth)):
                 with tf.name_scope('up_{}'.format(i)):
-                    current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=(2, 2))
+                    x_shape = tf.shape(finals[i])
+                    W_shape = tf.shape(self.w_up[i][0])
+                    out_shape = tf.stack([x_shape[0],
+                                          x_shape[1],
+                                          x_shape[2],
+                                          W_shape[2]])
+
+                    current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=(2, 2), out_shape=out_shape)
 
                     # Skip connection
                     current = tf.concat([current, finals[i]], axis=-1)
