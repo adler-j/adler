@@ -86,7 +86,10 @@ class UNet(object):
     def get_weight_bias(self, nin, nout, transpose=False):
         if self.ndim == 1:
             # Xavier initialization
-            stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+            # stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+
+            # He initialization
+            stddev = np.sqrt(2.6 / (3 * nin))
             if transpose:
                 w = tf.Variable(tf.truncated_normal([3, nout, nin], stddev=stddev))
             else:
@@ -97,7 +100,10 @@ class UNet(object):
             return w, b
         elif self.ndim == 2:
             # Xavier initialization
-            stddev = np.sqrt(2.6 / (3 * 3 * (nin + nout)))
+            # stddev = np.sqrt(2.6 / (3 * 3 * (nin + nout)))
+
+            # He initialization
+            stddev = np.sqrt(2.6 / (3 * 3 * nin))
             if transpose:
                 w = tf.Variable(tf.truncated_normal([3, 3, nout, nin], stddev=stddev))
             else:
