@@ -3,12 +3,13 @@ with demandimport.enabled():
     import tensorflow as tf
 
 import numpy as np
-from adler.tensorflow.layers import conv2d, conv2dtransp
+from adler.tensorflow.layers import conv2d, conv2dtransp, conv1d, conv1dtransp
 from adler.tensorflow.activation import prelu, leaky_relu
 
 
 class UNet(object):
     def __init__(self, nin, nout,
+                 ndim=2,
                  depth=4, layers_per_depth=2,
                  features=32, feature_increase=2,
                  keep_prob=1.0,
@@ -18,6 +19,7 @@ class UNet(object):
                  name='unet'):
         self.nin = nin
         self.nout = nout
+        self.ndim = ndim
         self.depth = depth
         self.layers_per_depth = layers_per_depth
         self.features = features
@@ -82,16 +84,30 @@ class UNet(object):
         return int(self.features * self.feature_increase ** level)
 
     def get_weight_bias(self, nin, nout, transpose=False):
-        # Xavier initialization
-        stddev = np.sqrt(2.6 / (3 * 3 * (nin + nout)))
-        if transpose:
-            w = tf.Variable(tf.truncated_normal([3, 3, nout, nin], stddev=stddev))
+        if self.ndim == 1:
+            # Xavier initialization
+            stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+            if transpose:
+                w = tf.Variable(tf.truncated_normal([3, nout, nin], stddev=stddev))
+            else:
+                w = tf.Variable(tf.truncated_normal([3, nin, nout], stddev=stddev))
+
+            b = tf.Variable(tf.constant(0.0, shape=[1, 1, nout]))
+
+            return w, b
+        elif self.ndim == 2:
+            # Xavier initialization
+            stddev = np.sqrt(2.6 / (3 * 3 * (nin + nout)))
+            if transpose:
+                w = tf.Variable(tf.truncated_normal([3, 3, nout, nin], stddev=stddev))
+            else:
+                w = tf.Variable(tf.truncated_normal([3, 3, nin, nout], stddev=stddev))
+
+            b = tf.Variable(tf.constant(0.0, shape=[1, 1, 1, nout]))
+
+            return w, b
         else:
-            w = tf.Variable(tf.truncated_normal([3, 3, nin, nout], stddev=stddev))
-
-        b = tf.Variable(tf.constant(0.0, shape=[1, 1, 1, nout]))
-
-        return w, b
+            raise ValueError('unknown ndim')
 
     def apply_activation(self, x):
         if self.activation == 'relu':
@@ -105,33 +121,71 @@ class UNet(object):
         else:
             raise RuntimeError('unknown activation')
 
-    def apply_conv(self, x, w, b, stride=(1, 1)):
+    def apply_conv(self, x, w, b, stride=False,
+                   disable_batch_norm=False,
+                   disable_dropout=False,
+                   disable_activation=False):
+        if stride:
+            if self.ndim == 1:
+                stride = 2
+            elif self.ndim == 2:
+                stride = (2, 2)
+        else:
+            if self.ndim == 1:
+                stride = 1
+            elif self.ndim == 2:
+                stride = (1, 1)
+
         with tf.name_scope('apply_conv'):
+            if self.ndim == 1:
+                x = conv1d(x, w, stride=stride) + b
+            elif self.ndim == 2:
+                x = conv2d(x, w, stride=stride) + b
 
-            x = conv2d(x, w, stride=stride) + b
-
-            if self.use_batch_norm:
+            if self.use_batch_norm and not disable_batch_norm:
                 x = tf.contrib.layers.batch_norm(x, center=True, scale=True,
                                                  is_training=self.is_training)
-            if self.keep_prob != 1.0:
+            if self.keep_prob != 1.0 and not disable_dropout:
                 x = tf.contrib.layers.dropout(x, keep_prob=self.keep_prob,
                                               is_training=self.is_training)
 
-            return self.apply_activation(x)
+            if not disable_activation:
+                x = self.apply_activation(x)
 
-    def apply_convtransp(self, x, w, b, stride=(1, 1), out_shape=None):
+            return x
+
+    def apply_convtransp(self, x, w, b, stride=False, out_shape=None,
+                         disable_batch_norm=False,
+                         disable_dropout=False,
+                         disable_activation=False):
+        if stride:
+            if self.ndim == 1:
+                stride = 2
+            elif self.ndim == 2:
+                stride = (2, 2)
+        else:
+            if self.ndim == 1:
+                stride = 1
+            elif self.ndim == 2:
+                stride = (1, 1)
+
         with tf.name_scope('apply_convtransp'):
+            if self.ndim == 1:
+                x = conv1dtransp(x, w, stride=stride, out_shape=out_shape) + b
+            elif self.ndim == 2:
+                x = conv2dtransp(x, w, stride=stride, out_shape=out_shape) + b
 
-            x = conv2dtransp(x, w, stride=stride, out_shape=out_shape) + b
-
-            if self.use_batch_norm:
+            if self.use_batch_norm and not disable_batch_norm:
                 x = tf.contrib.layers.batch_norm(x, center=True, scale=True,
                                                  is_training=self.is_training)
-            if self.keep_prob != 1.0:
+            if self.keep_prob != 1.0 and not disable_dropout:
                 x = tf.contrib.layers.dropout(x, keep_prob=self.keep_prob,
                                               is_training=self.is_training)
 
-            return self.apply_activation(x)
+            if not disable_activation:
+                x = self.apply_activation(x)
+
+            return x
 
     def __call__(self, x):
 
@@ -149,7 +203,7 @@ class UNet(object):
 
                     finals.append(current)
 
-                    current = self.apply_conv(current, self.w_down[i][-1], self.b_down[i][-1], stride=(2, 2))
+                    current = self.apply_conv(current, self.w_down[i][-1], self.b_down[i][-1], stride=True)
 
             with tf.name_scope('coarse'):
                 for j in range(self.layers_per_depth):
@@ -160,12 +214,17 @@ class UNet(object):
                 with tf.name_scope('up_{}'.format(i)):
                     x_shape = tf.shape(finals[i])
                     W_shape = tf.shape(self.w_up[i][0])
-                    out_shape = tf.stack([x_shape[0],
-                                          x_shape[1],
-                                          x_shape[2],
-                                          W_shape[2]])
+                    if self.ndim == 1:
+                        out_shape = tf.stack([x_shape[0],
+                                              x_shape[1],
+                                              W_shape[1]])
+                    elif self.ndim == 2:
+                        out_shape = tf.stack([x_shape[0],
+                                              x_shape[1],
+                                              x_shape[2],
+                                              W_shape[2]])
 
-                    current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=(2, 2), out_shape=out_shape)
+                    current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=True, out_shape=out_shape)
 
                     # Skip connection
                     current = tf.concat([current, finals[i]], axis=-1)
@@ -174,6 +233,9 @@ class UNet(object):
                         current = self.apply_conv(current, self.w_up[i][j], self.b_up[i][j])
 
             with tf.name_scope('out'):
-                current = conv2d(current, self.w_out) + self.b_out
+                current = self.apply_conv(current, self.w_out, self.b_out,
+                                          disable_dropout=True,
+                                          disable_batch_norm=True,
+                                          disable_activation=True)
 
         return current
