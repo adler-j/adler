@@ -218,22 +218,23 @@ class UNet(object):
             # up layers
             for i in reversed(range(self.depth)):
                 with tf.name_scope('up_{}'.format(i)):
-                    x_shape = tf.shape(finals[i])
-                    W_shape = tf.shape(self.w_up[i][0])
-                    if self.ndim == 1:
-                        out_shape = tf.stack([x_shape[0],
-                                              x_shape[1],
-                                              W_shape[1]])
-                    elif self.ndim == 2:
-                        out_shape = tf.stack([x_shape[0],
-                                              x_shape[1],
-                                              x_shape[2],
-                                              W_shape[2]])
+                    with tf.name_scope('upsampling'):
+                        x_shape = tf.shape(finals[i])
+                        W_shape = tf.shape(self.w_up[i][0])
+                        if self.ndim == 1:
+                            out_shape = tf.stack([x_shape[0],
+                                                  x_shape[1],
+                                                  W_shape[1]])
+                        elif self.ndim == 2:
+                            out_shape = tf.stack([x_shape[0],
+                                                  x_shape[1],
+                                                  x_shape[2],
+                                                  W_shape[2]])
 
-                    current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=True, out_shape=out_shape)
+                        current = self.apply_convtransp(current, self.w_up[i][0], self.b_up[i][0], stride=True, out_shape=out_shape)
 
-                    # Skip connection
-                    current = tf.concat([current, finals[i]], axis=-1)
+                    with tf.name_scope('skip_connection'):
+                        current = tf.concat([current, finals[i]], axis=-1)
 
                     for j in range(1, self.layers_per_depth):
                         current = self.apply_conv(current, self.w_up[i][j], self.b_up[i][j])
