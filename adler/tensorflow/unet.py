@@ -149,7 +149,7 @@ class UNet(object):
                 x = conv2d(x, w, stride=stride) + b
 
             if self.use_batch_norm and not disable_batch_norm:
-                x = tf.contrib.layers.batch_norm(x, center=True, scale=True,
+                x = tf.contrib.layers.batch_norm(x,
                                                  is_training=self.is_training)
             if self.keep_prob != 1.0 and not disable_dropout:
                 x = tf.contrib.layers.dropout(x, keep_prob=self.keep_prob,
