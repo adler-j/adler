@@ -463,3 +463,233 @@ def reference_unet(x, nout,
                                  disable_dropout=True)
 
     return current
+
+
+def residual_unet(x, nout,
+                  ndim=2,
+                  features=64,
+                  keep_prob=1.0,
+                  use_batch_norm=True,
+                  activation='relu',
+                  is_training=True,
+                  init='xavier',
+                  name='unet_original'):
+    def get_weight_bias(nin, nout, transpose, size):
+        if ndim == 1:
+            if init == 'xavier':
+                stddev = np.sqrt(2.6 / (size * (nin + nout)))
+            elif init == 'he':
+                stddev = np.sqrt(2.6 / (size * (nin)))
+
+            if transpose:
+                w = tf.Variable(tf.truncated_normal([size, nout, nin], stddev=stddev))
+            else:
+                w = tf.Variable(tf.truncated_normal([size, nin, nout], stddev=stddev))
+
+            b = tf.Variable(tf.constant(0.0, shape=[1, 1, nout]))
+
+            return w, b
+        elif ndim == 2:
+            if init == 'xavier':
+                stddev = np.sqrt(2.6 / (size * size * (nin + nout)))
+            elif init == 'he':
+                stddev = np.sqrt(2.6 / (size * size * (nin)))
+
+            if transpose:
+                w = tf.Variable(tf.truncated_normal([size, size, nout, nin], stddev=stddev))
+            else:
+                w = tf.Variable(tf.truncated_normal([size, size, nin, nout], stddev=stddev))
+
+            b = tf.Variable(tf.constant(0.0, shape=[1, 1, 1, nout]))
+
+            return w, b
+        else:
+            raise ValueError('unknown ndim')
+
+    def apply_activation(x):
+        if activation == 'relu':
+            return tf.nn.relu(x)
+        elif activation == 'elu':
+            return tf.nn.elu(x)
+        elif activation == 'leaky_relu':
+            return leaky_relu(x)
+        elif activation == 'prelu':
+            return prelu(x)
+        else:
+            raise RuntimeError('unknown activation')
+
+    def apply_conv(x, nout,
+                   stride=False,
+                   size=3,
+                   disable_batch_norm=False,
+                   disable_dropout=False,
+                   disable_activation=False):
+
+        if stride:
+            if ndim == 1:
+                stride = 2
+            elif ndim == 2:
+                stride = (2, 2)
+        else:
+            if ndim == 1:
+                stride = 1
+            elif ndim == 2:
+                stride = (1, 1)
+
+        with tf.name_scope('apply_conv'):
+            nin = int(x.get_shape()[-1])
+
+            w, b = get_weight_bias(nin, nout, transpose=False, size=size)
+
+            if ndim == 1:
+                out = conv1d(x, w, stride=stride) + b
+            elif ndim == 2:
+                out = conv2d(x, w, stride=stride) + b
+
+            if use_batch_norm and not disable_batch_norm:
+                out = tf.contrib.layers.batch_norm(out,
+                                                   is_training=is_training)
+            if keep_prob != 1.0 and not disable_dropout:
+                out = tf.contrib.layers.dropout(out, keep_prob=keep_prob,
+                                                is_training=is_training)
+
+            if not disable_activation:
+                out = apply_activation(out)
+
+            return out
+
+    def apply_convtransp(x, nout,
+                         stride=True, out_shape=None,
+                         size=2,
+                         disable_batch_norm=False,
+                         disable_dropout=False,
+                         disable_activation=False):
+
+        if stride:
+            if ndim == 1:
+                stride = 2
+            elif ndim == 2:
+                stride = (2, 2)
+        else:
+            if ndim == 1:
+                stride = 1
+            elif ndim == 2:
+                stride = (1, 1)
+
+        with tf.name_scope('apply_convtransp'):
+            nin = int(x.get_shape()[-1])
+
+            w, b = get_weight_bias(nin, nout, transpose=True, size=size)
+
+            if ndim == 1:
+                out = conv1dtransp(x, w, stride=stride, out_shape=out_shape) + b
+            elif ndim == 2:
+                out = conv2dtransp(x, w, stride=stride, out_shape=out_shape) + b
+
+            if use_batch_norm and not disable_batch_norm:
+                out = tf.contrib.layers.batch_norm(out,
+                                                   is_training=is_training)
+            if keep_prob != 1.0 and not disable_dropout:
+                out = tf.contrib.layers.dropout(out, keep_prob=keep_prob,
+                                                is_training=is_training)
+
+            if not disable_activation:
+                out = apply_activation(out)
+
+            return out
+
+    def apply_maxpool(x):
+        if ndim == 1:
+            return maxpool1d(x)
+        else:
+            return maxpool2d(x)
+
+    def residual_unit(x, features):
+        with tf.name_scope('residual_unit'):
+            nout = int(x.get_shape()[-1])
+
+            dx = apply_conv(x, features)
+            dx = apply_conv(dx, nout,
+                            size=1,
+                            disable_activation=True)
+
+            return x + dx
+
+    finals = []
+
+    with tf.name_scope('{}_call'.format(name)):
+        with tf.name_scope('in'):
+            current = apply_conv(x, features)
+
+            current = residual_unit(current, features)
+
+            finals.append(current)
+
+        with tf.name_scope('down_1'):
+            current = apply_maxpool(current)
+
+            for i in range(2):
+                current = residual_unit(current, features)
+
+            finals.append(current)
+
+        with tf.name_scope('down_2'):
+            current = apply_maxpool(current)
+
+            for i in range(4):
+                current = residual_unit(current, features)
+
+            finals.append(current)
+
+        with tf.name_scope('down_3'):
+            current = apply_maxpool(current)
+
+            for i in range(8):
+                current = residual_unit(current, features)
+
+            finals.append(current)
+
+        with tf.name_scope('coarse'):
+            current = apply_maxpool(current)
+
+            for i in range(16):
+                current = residual_unit(current, features)
+
+        with tf.name_scope('up_3'):
+            skip = finals.pop()
+            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = tf.concat([current, skip], axis=-1)
+
+            for i in range(8):
+                current = residual_unit(current, features)
+
+        with tf.name_scope('up_2'):
+            skip = finals.pop()
+            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = current + skip
+
+            for i in range(4):
+                current = residual_unit(current, features)
+
+        with tf.name_scope('up_1'):
+            skip = finals.pop()
+            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = tf.concat([current, skip], axis=-1)
+
+            for i in range(2):
+                current = residual_unit(current, features)
+
+        with tf.name_scope('out'):
+            skip = finals.pop()
+            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = tf.concat([current, skip], axis=-1)
+
+            current = residual_unit(current, features)
+
+            current = apply_conv(current, nout,
+                                 size=1,
+                                 disable_activation=True,
+                                 disable_batch_norm=True,
+                                 disable_dropout=True)
+
+    return current
