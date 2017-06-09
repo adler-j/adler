@@ -63,10 +63,28 @@ def conv2dtransp(x, W, stride=(1, 1), out_shape=None, padding='SAME'):
                                   stride[0] * x_shape[1],
                                   stride[1] * x_shape[2],
                                   W_shape[2]])
+
         return tf.nn.conv2d_transpose(x, W,
                                       output_shape=out_shape,
                                       strides=[1, stride[0], stride[1], 1],
                                       padding=padding)
+
+
+def maxpool1d(x, stride=2, padding='SAME'):
+    with tf.name_scope('maxpool1d'):
+        ksize = [1, 1, stride, 1]
+        strides = [1, 1, stride, 1]
+
+        x_pad = tf.expand_dims(x, 1)
+        result = tf.nn.max_pool(x_pad, ksize, strides, padding)
+        return tf.squeeze(result, axis=1)
+
+
+def maxpool2d(x, stride=(2, 2), padding='SAME'):
+    with tf.name_scope('maxpool2d'):
+        ksize = [1, stride[0], stride[1], 1]
+        strides = [1, stride[0], stride[1], 1]
+        return tf.nn.max_pool(x, ksize, strides, padding)
 
 
 def huber(values, max_grad=1.0):
