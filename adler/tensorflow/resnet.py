@@ -9,7 +9,8 @@ with demandimport.enabled():
 
 
 class ResNet(object):
-    def __init__(self, nin, nout,
+    def __init__(self,
+                 channels,
                  ndim=2,
                  depth=3,
                  conv_layers=3,
@@ -18,10 +19,10 @@ class ResNet(object):
                  keep_prob=1.0,
                  use_batch_norm=True,
                  activation='prelu',
+                 initialization='xavier',
                  is_training=True,
                  name='resunit'):
-        self.nin = nin
-        self.nout = nout
+        self.channels = channels
         self.ndim = ndim
         self.depth = depth
         self.conv_layers = conv_layers
@@ -31,6 +32,7 @@ class ResNet(object):
         self.keep_prob = keep_prob
         self.use_batch_norm = use_batch_norm
         self.activation = activation
+        self.initialization = initialization
 
         self.is_training = is_training
 
@@ -48,13 +50,13 @@ class ResNet(object):
                 reduce_bias = []
 
                 for i in range(self.conv_layers):
-                    nin = self.nin if i == 0 else features
+                    nin = self.channels if i == 0 else features
                     w, b = self.get_weight_bias(nin, features, size=3)
                     conv_weights.append(w)
                     conv_bias.append(b)
 
                 for i in range(self.reduce_layers):
-                    nout = self.nout if i == (self.reduce_layers - 1) else features
+                    nout = self.channels if i == (self.reduce_layers - 1) else features
                     w, b = self.get_weight_bias(features, nout, size=1)
                     reduce_weights.append(w)
                     reduce_bias.append(b)
@@ -66,11 +68,11 @@ class ResNet(object):
 
     def get_weight_bias(self, nin, nout, size=3, transpose=False):
         if self.ndim == 1:
-            # Xavier initialization
-            # stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+            if self.initialization == 'xavier':
+                stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+            elif self.initialization == 'he':
+                stddev = np.sqrt(2.6 / (size * nin))
 
-            # He initialization
-            stddev = np.sqrt(2.6 / (size * nin))
             if transpose:
                 w = tf.Variable(tf.truncated_normal([size, nout, nin],
                                                     stddev=stddev))
@@ -82,10 +84,11 @@ class ResNet(object):
 
             return w, b
         elif self.ndim == 2:
-            # Xavier initialization
-            # stddev = np.sqrt(2.6 / (3 * 3 * (nin + nout)))
+            if self.initialization == 'xavier':
+                stddev = np.sqrt(2.6 / (3 * (nin + nout)))
+            elif self.initialization == 'he':
+                stddev = np.sqrt(2.6 / (size * nin))
 
-            # He initialization
             stddev = np.sqrt(2.6 / (size * size * nin))
             if transpose:
                 w = tf.Variable(tf.truncated_normal([size, size, nout, nin],
@@ -156,9 +159,13 @@ class ResNet(object):
                                          self.conv_bias[d][i])
 
                 for i in range(self.reduce_layers):
+                    last = (i == self.reduce_layers - 1)
                     dx = self.apply_conv(dx,
                                          self.reduce_weights[d][i],
-                                         self.reduce_bias[d][i])
+                                         self.reduce_bias[d][i],
+                                         disable_batch_norm=last,
+                                         disable_dropout=last,
+                                         disable_activation=last)
 
                 x = x + dx
 
