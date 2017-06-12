@@ -261,6 +261,10 @@ def reference_unet(x, nout,
                    is_training=True,
                    init='he',
                    name='unet_original'):
+    """Reference implementation of the original U-net.
+
+    https://arxiv.org/abs/1505.04597
+    """
     def get_weight_bias(nin, nout, transpose, size):
         if transpose:
             shape = [size] * ndim + [nout, nin]
@@ -411,7 +415,7 @@ def reference_unet(x, nout,
         with tf.name_scope('up_3'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 8,
-                                       out_shape=skip.shape,
+                                       out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
@@ -421,7 +425,7 @@ def reference_unet(x, nout,
         with tf.name_scope('up_2'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 4,
-                                       out_shape=skip.shape,
+                                       out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
@@ -431,7 +435,7 @@ def reference_unet(x, nout,
         with tf.name_scope('up_1'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 2,
-                                       out_shape=skip.shape,
+                                       out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
@@ -441,7 +445,7 @@ def reference_unet(x, nout,
         with tf.name_scope('out'):
             skip = finals.pop()
             current = apply_convtransp(current, features,
-                                       out_shape=skip.shape,
+                                       out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
@@ -658,7 +662,7 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_3'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape,
+            current = apply_convtransp(current, features, out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
@@ -667,7 +671,7 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_2'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape,
+            current = apply_convtransp(current, features, out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = current + skip
 
@@ -676,7 +680,7 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_1'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape,
+            current = apply_convtransp(current, features, out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = current + skip
 
@@ -685,7 +689,7 @@ def residual_unet(x, nout,
 
         with tf.name_scope('out'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape,
+            current = apply_convtransp(current, features, out_shape=tf.shape(skip),
                                        disable_activation=True)
             current = current + skip
 
