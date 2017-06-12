@@ -259,39 +259,25 @@ def reference_unet(x, nout,
                    use_batch_norm=True,
                    activation='relu',
                    is_training=True,
-                   init='xavier',
+                   init='he',
                    name='unet_original'):
     def get_weight_bias(nin, nout, transpose, size):
-        if ndim == 1:
-            if init == 'xavier':
-                stddev = np.sqrt(2.6 / (size * (nin + nout)))
-            elif init == 'he':
-                stddev = np.sqrt(2.6 / (size * (nin)))
-
-            if transpose:
-                w = tf.Variable(tf.truncated_normal([size, nout, nin], stddev=stddev))
-            else:
-                w = tf.Variable(tf.truncated_normal([size, nin, nout], stddev=stddev))
-
-            b = tf.Variable(tf.constant(0.0, shape=[1, 1, nout]))
-
-            return w, b
-        elif ndim == 2:
-            if init == 'xavier':
-                stddev = np.sqrt(2.6 / (size * size * (nin + nout)))
-            elif init == 'he':
-                stddev = np.sqrt(2.6 / (size * size * (nin)))
-
-            if transpose:
-                w = tf.Variable(tf.truncated_normal([size, size, nout, nin], stddev=stddev))
-            else:
-                w = tf.Variable(tf.truncated_normal([size, size, nin, nout], stddev=stddev))
-
-            b = tf.Variable(tf.constant(0.0, shape=[1, 1, 1, nout]))
-
-            return w, b
+        if transpose:
+            shape = [size] * ndim + [nout, nin]
         else:
-            raise ValueError('unknown ndim')
+            shape = [size] * ndim + [nin, nout]
+
+        b_shape = [1] * (1 + ndim) + [nout]
+
+        if init == 'xavier':
+            stddev = np.sqrt(2.6 / (size ** ndim * (nin + nout)))
+        elif init == 'he':
+            stddev = np.sqrt(2.6 / (size ** ndim * nin))
+
+        w = tf.Variable(tf.truncated_normal(shape, stddev=stddev))
+        b = tf.Variable(tf.constant(0.0, shape=b_shape))
+
+        return w, b
 
     def apply_activation(x):
         if activation == 'relu':
@@ -478,39 +464,25 @@ def residual_unet(x, nout,
                   use_batch_norm=True,
                   activation='relu',
                   is_training=True,
-                  init='xavier',
+                  init='he',
                   name='unet_original'):
     def get_weight_bias(nin, nout, transpose, size):
-        if ndim == 1:
-            if init == 'xavier':
-                stddev = np.sqrt(2.6 / (size * (nin + nout)))
-            elif init == 'he':
-                stddev = np.sqrt(2.6 / (size * (nin)))
-
-            if transpose:
-                w = tf.Variable(tf.truncated_normal([size, nout, nin], stddev=stddev))
-            else:
-                w = tf.Variable(tf.truncated_normal([size, nin, nout], stddev=stddev))
-
-            b = tf.Variable(tf.constant(0.0, shape=[1, 1, nout]))
-
-            return w, b
-        elif ndim == 2:
-            if init == 'xavier':
-                stddev = np.sqrt(2.6 / (size * size * (nin + nout)))
-            elif init == 'he':
-                stddev = np.sqrt(2.6 / (size * size * (nin)))
-
-            if transpose:
-                w = tf.Variable(tf.truncated_normal([size, size, nout, nin], stddev=stddev))
-            else:
-                w = tf.Variable(tf.truncated_normal([size, size, nin, nout], stddev=stddev))
-
-            b = tf.Variable(tf.constant(0.0, shape=[1, 1, 1, nout]))
-
-            return w, b
+        if transpose:
+            shape = [size] * ndim + [nout, nin]
         else:
-            raise ValueError('unknown ndim')
+            shape = [size] * ndim + [nin, nout]
+
+        b_shape = [1] * (1 + ndim) + [nout]
+
+        if init == 'xavier':
+            stddev = np.sqrt(2.6 / (size ** ndim * (nin + nout)))
+        elif init == 'he':
+            stddev = np.sqrt(2.6 / (size ** ndim * nin))
+
+        w = tf.Variable(tf.truncated_normal(shape, stddev=stddev))
+        b = tf.Variable(tf.constant(0.0, shape=b_shape))
+
+        return w, b
 
     def apply_activation(x):
         if activation == 'relu':
