@@ -3,7 +3,9 @@ with demandimport.enabled():
     import tensorflow as tf
 
 import numpy as np
-from adler.tensorflow.layers import conv2d, conv2dtransp, conv1d, conv1dtransp, maxpool2d, maxpool1d
+from adler.tensorflow.layers import (conv2d, conv2dtransp,
+                                     conv1d, conv1dtransp,
+                                     maxpool2d, maxpool1d)
 from adler.tensorflow.activation import prelu, leaky_relu
 
 
@@ -423,7 +425,8 @@ def reference_unet(x, nout,
         with tf.name_scope('up_3'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 8,
-                                       out_shape=skip.shape)
+                                       out_shape=skip.shape,
+                                       disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
             current = apply_conv(current, features * 8)
@@ -432,7 +435,8 @@ def reference_unet(x, nout,
         with tf.name_scope('up_2'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 4,
-                                       out_shape=skip.shape)
+                                       out_shape=skip.shape,
+                                       disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
             current = apply_conv(current, features * 4)
@@ -441,7 +445,8 @@ def reference_unet(x, nout,
         with tf.name_scope('up_1'):
             skip = finals.pop()
             current = apply_convtransp(current, features * 2,
-                                       out_shape=skip.shape)
+                                       out_shape=skip.shape,
+                                       disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
             current = apply_conv(current, features * 2)
@@ -450,7 +455,8 @@ def reference_unet(x, nout,
         with tf.name_scope('out'):
             skip = finals.pop()
             current = apply_convtransp(current, features,
-                                       out_shape=skip.shape)
+                                       out_shape=skip.shape,
+                                       disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
             current = apply_conv(current, features)
@@ -615,37 +621,60 @@ def residual_unet(x, nout,
 
             return x + dx
 
+    residual_down = False
+    conv_down = False
+
     finals = []
 
     with tf.name_scope('{}_call'.format(name)):
         with tf.name_scope('in'):
-            current = apply_conv(x, features)
+            current = apply_conv(x, features, size=7)
 
-            current = residual_unit(current, features)
+            if residual_down:
+                current = residual_unit(current, features)
+            elif conv_down:
+                current = apply_conv(current, features,
+                                     size=1,
+                                     disable_activation=True)
 
             finals.append(current)
 
         with tf.name_scope('down_1'):
             current = apply_maxpool(current)
 
-            for i in range(2):
-                current = residual_unit(current, features)
+            if residual_down:
+                for i in range(2):
+                    current = residual_unit(current, features)
+            elif conv_down:
+                current = apply_conv(current, features,
+                                     size=1,
+                                     disable_activation=True)
 
             finals.append(current)
 
         with tf.name_scope('down_2'):
             current = apply_maxpool(current)
 
-            for i in range(4):
-                current = residual_unit(current, features)
+            if residual_down:
+                for i in range(4):
+                    current = residual_unit(current, features)
+            elif conv_down:
+                current = apply_conv(current, features,
+                                     size=1,
+                                     disable_activation=True)
 
             finals.append(current)
 
         with tf.name_scope('down_3'):
             current = apply_maxpool(current)
 
-            for i in range(8):
-                current = residual_unit(current, features)
+            if residual_down:
+                for i in range(8):
+                    current = residual_unit(current, features)
+            elif conv_down:
+                current = apply_conv(current, features,
+                                     size=1,
+                                     disable_activation=True)
 
             finals.append(current)
 
@@ -657,7 +686,8 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_3'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = apply_convtransp(current, features, out_shape=skip.shape,
+                                       disable_activation=True)
             current = tf.concat([current, skip], axis=-1)
 
             for i in range(8):
@@ -665,7 +695,8 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_2'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape)
+            current = apply_convtransp(current, features, out_shape=skip.shape,
+                                       disable_activation=True)
             current = current + skip
 
             for i in range(4):
@@ -673,16 +704,18 @@ def residual_unet(x, nout,
 
         with tf.name_scope('up_1'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape)
-            current = tf.concat([current, skip], axis=-1)
+            current = apply_convtransp(current, features, out_shape=skip.shape,
+                                       disable_activation=True)
+            current = current + skip
 
             for i in range(2):
                 current = residual_unit(current, features)
 
         with tf.name_scope('out'):
             skip = finals.pop()
-            current = apply_convtransp(current, features, out_shape=skip.shape)
-            current = tf.concat([current, skip], axis=-1)
+            current = apply_convtransp(current, features, out_shape=skip.shape,
+                                       disable_activation=True)
+            current = current + skip
 
             current = residual_unit(current, features)
 
