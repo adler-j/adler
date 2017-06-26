@@ -260,11 +260,15 @@ def reference_unet(x, nout,
                    activation='relu',
                    is_training=True,
                    init='he',
+                   depth=4,
                    name='unet_original'):
     """Reference implementation of the original U-net.
 
     https://arxiv.org/abs/1505.04597
     """
+
+    assert depth >= 1
+
     def get_weight_bias(nin, nout, transpose, size):
         if transpose:
             shape = [size] * ndim + [nout, nin]
@@ -389,58 +393,30 @@ def reference_unet(x, nout,
             current = apply_conv(current, features)
             finals.append(current)
 
-        with tf.name_scope('down_1'):
-            current = apply_maxpool(current)
-            current = apply_conv(current, features * 2)
-            current = apply_conv(current, features * 2)
-            finals.append(current)
-
-        with tf.name_scope('down_2'):
-            current = apply_maxpool(current)
-            current = apply_conv(current, features * 4)
-            current = apply_conv(current, features * 4)
-            finals.append(current)
-
-        with tf.name_scope('down_3'):
-            current = apply_maxpool(current)
-            current = apply_conv(current, features * 8)
-            current = apply_conv(current, features * 8)
-            finals.append(current)
+        for layer in range(depth - 1):
+            with tf.name_scope('down_{}'.format(layer + 1)):
+                features_layer = 2 ** (layer + 1)
+                current = apply_maxpool(current)
+                current = apply_conv(current, features_layer)
+                current = apply_conv(current, features_layer)
+                finals.append(current)
 
         with tf.name_scope('coarse'):
             current = apply_maxpool(current)
-            current = apply_conv(current, features * 16)
-            current = apply_conv(current, features * 16)
+            current = apply_conv(current, features * 2 ** depth)
+            current = apply_conv(current, features * 2 ** depth)
 
-        with tf.name_scope('up_3'):
-            skip = finals.pop()
-            current = apply_convtransp(current, features * 8,
-                                       out_shape=tf.shape(skip),
-                                       disable_activation=True)
-            current = tf.concat([current, skip], axis=-1)
+        for layer in reversed(range(depth - 1)):
+            with tf.name_scope('up_{}'.format(layer + 1)):
+                features_layer = 2 ** (layer + 1)
+                skip = finals.pop()
+                current = apply_convtransp(current, features_layer,
+                                           out_shape=tf.shape(skip),
+                                           disable_activation=True)
+                current = tf.concat([current, skip], axis=-1)
 
-            current = apply_conv(current, features * 8)
-            current = apply_conv(current, features * 8)
-
-        with tf.name_scope('up_2'):
-            skip = finals.pop()
-            current = apply_convtransp(current, features * 4,
-                                       out_shape=tf.shape(skip),
-                                       disable_activation=True)
-            current = tf.concat([current, skip], axis=-1)
-
-            current = apply_conv(current, features * 4)
-            current = apply_conv(current, features * 4)
-
-        with tf.name_scope('up_1'):
-            skip = finals.pop()
-            current = apply_convtransp(current, features * 2,
-                                       out_shape=tf.shape(skip),
-                                       disable_activation=True)
-            current = tf.concat([current, skip], axis=-1)
-
-            current = apply_conv(current, features * 2)
-            current = apply_conv(current, features * 2)
+                current = apply_conv(current, features_layer)
+                current = apply_conv(current, features_layer)
 
         with tf.name_scope('out'):
             skip = finals.pop()
@@ -469,7 +445,7 @@ def residual_unet(x, nout,
                   activation='relu',
                   is_training=True,
                   init='he',
-                  name='unet_original'):
+                  name='unet_residual'):
     def get_weight_bias(nin, nout, transpose, size):
         if transpose:
             shape = [size] * ndim + [nout, nin]
