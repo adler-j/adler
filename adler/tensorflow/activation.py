@@ -3,6 +3,9 @@ with demandimport.enabled():
     import tensorflow as tf
 
 
+__all__ = ('leaky_relu', 'prelu')
+
+
 def leaky_relu(_x, alpha=0.2, name='leaky_relu'):
     return prelu(_x, init=alpha, name=name, trainable=False)
 

@@ -3,6 +3,10 @@ with demandimport.enabled():
     import tensorflow as tf
 
 
+__all__ = ('conv1d', 'conv1dtransp', 'conv2d', 'conv2dtransp',
+           'maxpool1d', 'maxpool2d', 'huber')
+
+
 def conv1d(x, W, stride=1, padding='SAME'):
     with tf.name_scope('conv1d'):
         return tf.nn.conv1d(x, W,

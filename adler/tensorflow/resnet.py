@@ -8,6 +8,9 @@ with demandimport.enabled():
     import tensorflow as tf
 
 
+__all__ = ('ResNet',)
+
+
 class ResNet(object):
     def __init__(self,
                  channels,

@@ -2,6 +2,10 @@ import os
 from os.path import join, expanduser, exists
 
 
+__all__ = ('get_base_dir', 
+           'default_checkpoint_path', 'default_tensorboard_dir')
+
+
 def get_base_dir():
     """Get the data directory."""
     base_odl_dir = os.environ.get('ADLER_HOME',

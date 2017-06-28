@@ -9,6 +9,9 @@ from adler.tensorflow.layers import (conv2d, conv2dtransp,
 from adler.tensorflow.activation import prelu, leaky_relu
 
 
+__all__ = ('UNet', 'reference_unet', 'residual_unet')
+
+
 class UNet(object):
     def __init__(self, nin, nout,
                  ndim=2,

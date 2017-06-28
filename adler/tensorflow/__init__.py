@@ -1,6 +1,14 @@
-__all__ = ('activation', 'layers', 'unet', 'util')
+__all__ = ()
 
-from . import activation
-from . import layers
-from . import unet
-from . import util
+from .activation import *
+__all__ += activation.__all__
+from .layers import *
+__all__ += layers.__all__
+from .unet import *
+__all__ += unet.__all__
+from .util import *
+__all__ += util.__all__
+from .losses import *
+__all__ += losses.__all__
+from .training import *
+__all__ += training.__all__
