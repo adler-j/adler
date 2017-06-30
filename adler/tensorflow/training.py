@@ -3,6 +3,10 @@ with demandimport.enabled():
     import tensorflow as tf
     
 import numpy as np
+
+
+__all__ = ('cosine_decay',)
+
     
 def cosine_decay(learning_rate, global_step, maximum_steps,
                  name=None):
@@ -20,6 +24,6 @@ def cosine_decay(learning_rate, global_step, maximum_steps,
     global_step = math_ops.cast(global_step, dtype)
     maximum_steps = math_ops.cast(maximum_steps, dtype)
     
-    p = global_step / maximum_steps
+    p = tf.mod(global_step / maximum_steps, 1)
     
     return learning_rate * (0.5 + 0.5 * math_ops.cos(p * np.pi))
