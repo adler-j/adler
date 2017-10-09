@@ -1,9 +1,14 @@
 import os
+import shutil
 from os.path import join, expanduser, exists
 
+import demandimport
+with demandimport.enabled():
+    import tensorflow as tf
 
 __all__ = ('get_base_dir', 
-           'default_checkpoint_path', 'default_tensorboard_dir')
+           'default_checkpoint_path', 'default_tensorboard_dir',
+           'summary_writers')
 
 
 def get_base_dir():
@@ -32,3 +37,18 @@ def default_tensorboard_dir(name):
     if not exists(tensorboard_dir):
         os.makedirs(tensorboard_dir)
     return tensorboard_dir
+
+
+def summary_writers(name, cleanup=False, session=None):
+    if session is None:
+        session = tf.get_default_session()
+    
+    dname = default_tensorboard_dir(name)
+    
+    if cleanup and os.path.exists(dname):
+        shutil.rmtree(dname)    
+    
+    test_summary_writer = tf.summary.FileWriter(dname + '/test', session.graph)
+    train_summary_writer = tf.summary.FileWriter(dname + '/train')
+    
+    return test_summary_writer, train_summary_writer
