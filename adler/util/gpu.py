@@ -64,14 +64,16 @@ def pick_gpu_lowest_memory():
         best_memory, best_gpu = sorted(memory_gpu_map)[0]
         return best_gpu
 
-
-def setup_one_gpu():
+    
+def setup_one_gpu(gpu_id=None):
     if 'tensorflow' in sys.modules:
         print("Warning, GPU setup must happen before importing TensorFlow")
     if 'astra' in sys.modules:
         print("Warning, GPU setup must happen before importing ASTRA")
 
-    gpu_id = pick_gpu_lowest_memory()
+    if gpu_id is None:
+        gpu_id = pick_gpu_lowest_memory()
+        
     if gpu_id is None:
         print('Found no GPUs, doing nothing')
     else:
