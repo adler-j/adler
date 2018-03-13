@@ -299,6 +299,8 @@ def reference_unet(x, nout,
             return leaky_relu(x)
         elif activation == 'prelu':
             return prelu(x)
+        elif activation == 'softplus':
+            return tf.nn.softplus(x)
         else:
             raise RuntimeError('unknown activation')
 

@@ -113,3 +113,28 @@ def huber(values, max_grad=1.0):
         lin = mg*(err-.5*mg)
         quad = .5*err*err
         return tf.where(err < mg, quad, lin)
+
+
+def _weights(name, shape, mean=0.0, stddev=0.02):
+  var = tf.get_variable(
+    name, shape,
+    initializer=tf.random_normal_initializer(
+      mean=mean, stddev=stddev, dtype=tf.float32))
+  return var
+
+def _biases(name, shape, constant=0.0):
+  return tf.get_variable(name, shape,
+            initializer=tf.constant_initializer(constant))
+
+def instance_norm(x, epsilon=1e-5, name=None):
+    """Instance Normalization"""
+    with tf.variable_scope(name, default_name="instance_norm"):
+        with tf.name_scope('really'):
+            depth = x.get_shape()[3]
+            scale = _weights("scale", [depth], mean=1.0)
+            offset = _biases("offset", [depth])
+            mean, variance = tf.nn.moments(x, axes=[1,2], keep_dims=True)
+            epsilon = 1e-5
+            inv = tf.rsqrt(variance + epsilon)
+            normalized = (x-mean)*inv
+            return scale*normalized + offset

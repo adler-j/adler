@@ -6,7 +6,7 @@ import demandimport
 with demandimport.enabled():
     import tensorflow as tf
 
-__all__ = ('get_base_dir', 
+__all__ = ('get_base_dir',
            'default_checkpoint_path', 'default_tensorboard_dir',
            'summary_writers')
 
@@ -39,16 +39,25 @@ def default_tensorboard_dir(name):
     return tensorboard_dir
 
 
-def summary_writers(name, cleanup=False, session=None):
+def summary_writers(name, cleanup=False, session=None, write_graph=True):
     if session is None:
         session = tf.get_default_session()
-    
+
     dname = default_tensorboard_dir(name)
-    
+
     if cleanup and os.path.exists(dname):
-        shutil.rmtree(dname)    
-    
-    test_summary_writer = tf.summary.FileWriter(dname + '/test', session.graph)
+        shutil.rmtree(dname, ignore_errors=True)
+
+    if write_graph:
+        graph = session.graph
+    else:
+        graph = None
+
+    test_summary_writer = tf.summary.FileWriter(dname + '/test', graph)
     train_summary_writer = tf.summary.FileWriter(dname + '/train')
-    
+
     return test_summary_writer, train_summary_writer
+
+
+if __name__ == '__main__':
+    print('base dir: {}'.format(get_base_dir()))
