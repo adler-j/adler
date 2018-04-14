@@ -37,7 +37,7 @@ class EMAHelper(object):
             self.session = session
 
         self.all_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-        self.ema = tf.train.ExponentialMovingAverage(decay=0.99)
+        self.ema = tf.train.ExponentialMovingAverage(decay=decay)
         self.apply = self.ema.apply(self.all_vars)
         self.averages = [self.ema.average(var) for var in self.all_vars]
 
@@ -45,6 +45,9 @@ class EMAHelper(object):
         ema_averages_results = self.session.run(self.averages)
         return {var: value for var, value in zip(self.all_vars,
                                                  ema_averages_results)}
+
+    def variables_to_restore(self):
+        return self.ema.variables_to_restore(tf.moving_average_variables())
 
 
 def ema_wrapper(is_training, decay=0.99, scope='ema_wrapper', reuse=False):
