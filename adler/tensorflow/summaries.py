@@ -3,7 +3,7 @@ with demandimport.enabled():
     import tensorflow as tf
 
     
-__all__ = ('image_grid', 'image_summary', 'scalars_summary')
+__all__ = ('image_grid', 'image_grid_summary', 'scalars_summary')
 
 
 def image_grid(x, size=8):
