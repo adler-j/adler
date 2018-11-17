@@ -5,7 +5,7 @@ with demandimport.enabled():
     import odl
 
 
-def random_ellipse(interior=False):
+def random_shapes(interior=False):
     if interior:
         x_0 = np.random.rand() - 0.5
         y_0 = np.random.rand() - 0.5
@@ -19,7 +19,12 @@ def random_ellipse(interior=False):
             np.random.rand() * 2 * np.pi)
 
 
-def random_phantom(spc, n_ellipse=50, interior=False):
+def random_phantom(spc, n_ellipse=50, interior=False, form='ellipse'):
     n = np.random.poisson(n_ellipse)
-    ellipses = [random_ellipse(interior=interior) for _ in range(n)]
-    return odl.phantom.ellipsoid_phantom(spc, ellipses)
+    shapes = [random_shapes(interior=interior) for _ in range(n)]
+    if form == 'ellipse':
+        return odl.phantom.ellipsoid_phantom(spc, shapes)
+    if form == 'rectangle':
+        return odl.phantom.cuboid_phantom(spc, shapes)
+    else:
+        raise Exception('unknown form')
