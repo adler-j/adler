@@ -59,5 +59,26 @@ def summary_writers(name, cleanup=False, session=None, write_graph=True):
     return test_summary_writer, train_summary_writer
 
 
+def run_with_profile(ops, feed_dict, name='profile.json', session=None):
+    from tensorflow.python.client import timeline
+
+    if session is None:
+        session = tf.get_default_session()
+
+    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
+
+    result = session.run(ops, feed_dict=feed_dict,
+                         options=options,
+                         run_metadata=run_metadata)
+
+    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+    with open(name, 'w') as f:
+        f.write(chrome_trace)
+
+    return result
+
+
 if __name__ == '__main__':
     print('base dir: {}'.format(get_base_dir()))

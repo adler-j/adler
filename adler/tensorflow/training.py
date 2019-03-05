@@ -43,8 +43,8 @@ class EMAHelper(object):
 
     def average_dict(self):
         ema_averages_results = self.session.run(self.averages)
-        return {var: value for var, value in zip(self.all_vars,
-                                                 ema_averages_results)}
+        return {var: value for var, value in
+                zip(self.all_vars, ema_averages_results)}
 
     def variables_to_restore(self):
         return self.ema.variables_to_restore(tf.moving_average_variables())
