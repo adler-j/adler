@@ -12,5 +12,5 @@ from .losses import *
 __all__ += losses.__all__
 from .training import *
 __all__ += training.__all__
-from .summaries import *
-__all__ += summaries.__all__
+from .summary import *
+__all__ += summary.__all__

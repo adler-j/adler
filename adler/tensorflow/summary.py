@@ -28,18 +28,19 @@ def scalars_summary(name, x):
         tf.summary.histogram('histogram', x)
 
 
-def segmentation_overlay_summary(name, img, segmentation, alpha=0.5, gamma_factor=2.2):
+def segmentation_overlay_summary(name, img, segmentation, alpha=0.5, gamma_factor=2.2, color=[1.0, 0.0, 0.0]):
     with tf.name_scope(name):
         minv = tf.reduce_min(img, axis=[1, 2, 3], keepdims=True)
         maxv = tf.reduce_max(img, axis=[1, 2, 3], keepdims=True)
         img = (img - minv) / (maxv - minv)
         img = tf.concat(3 * [img], axis=-1)
-        red = np.zeros([1, 1, 1, 3], 'float32')
-        red[..., 0] = 1
-        red = tf.convert_to_tensor(red)
+        color = np.cast(color, 'float32')
+        color /= np.sum(color)
+        color = np.reshape(color, [1, 1, 1, 3])
+        color = tf.convert_to_tensor(color)
 
         img_rgb_pow = img ** gamma_factor
 
-        out_rgb_pow = red * alpha * segmentation + img_rgb_pow * (1. - alpha * segmentation)
+        out_rgb_pow = color * alpha * segmentation + img_rgb_pow * (1. - alpha * segmentation)
         out_rgb = out_rgb_pow ** (1. / gamma_factor)
         tf.summary.image(name, out_rgb)
