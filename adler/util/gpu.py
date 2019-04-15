@@ -63,26 +63,25 @@ def pick_gpu_lowest_memory():
     else:
         best_memory, best_gpu = sorted(memory_gpu_map)[0]
         return best_gpu
-
     
-def setup_one_gpu(gpu_id=None):
+
+def select_gpu(gpu_ids):
     if 'tensorflow' in sys.modules:
         print("Warning, GPU setup must happen before importing TensorFlow")
     if 'astra' in sys.modules:
         print("Warning, GPU setup must happen before importing ASTRA")
 
+    gpu_str = ','.join(str(id) for id in gpu_ids)
+        
+    print("Picking GPU(s) " + str(gpu_str))
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_str
+    
+def setup_one_gpu(gpu_id=None):
     if gpu_id is None:
         gpu_id = pick_gpu_lowest_memory()
         
-    if gpu_id is None:
-        print('Found no GPUs, doing nothing')
-    else:
-        print("Picking GPU " + str(gpu_id))
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
+    select_gpu([gpu_id])
 
 def setup_no_gpu():
-    if 'tensorflow' in sys.modules:
-        print("Warning, GPU setup must happen before importing TensorFlow")
-    os.environ["CUDA_VISIBLE_DEVICES"] = ''
+    select_gpu([])
