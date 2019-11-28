@@ -16,7 +16,7 @@ def prelu(_x, init=0.0, name='prelu', trainable=True):
                                  shape=[int(_x.get_shape()[-1])],
                                  initializer=tf.constant_initializer(init),
                                  dtype=tf.float32,
-                                 trainable=True)
+                                 trainable=trainable)
         pos = tf.nn.relu(_x)
         neg = -alphas * tf.nn.relu(-_x)
 
